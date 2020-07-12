@@ -1,0 +1,109 @@
+Rosny-Aleph Colas
+Friday July 10, 2020
+
+Working on an assessment for Vice in which I need to pull information from a postgres database using python and SQL
+statements.
+
+Ran into trouble with docker, but however, I have my database set up and already have Python 3.7. I am getting the
+proper error messages, so it seems that I am good to go. Rereading readme.md for a refresher on what I need to do.
+
+(I am going to log my thinking in here as I go for myself but will create a SUMMARY of my approach BELOW, so feel free
+to SKIP to the summary portion of this txt file!)
+
+------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------LOG--------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+
+First thing that I notice is that get_job_statistics takes in a parameter of job_id so i can use this job_id with a
+where statement to pull data by each job which is important because the final test case actually has 2 orders yet
+they have the same job_id.
+
+I can pull data from both different types of tables and put them into a list and use the elements of list to assign the
+proper values to the criteria that we're looking for like 'month_of_service_count'.
+
+The output wanted from each test case is in fact a dictionary which isn't too tricky; however, the orders section is a
+dictionary of dictionaries based on how many orders were a part of the job. That's something to keep in mind.
+
+The method that is run to pull statistics from the database is going to need to fetch twice in order to pull from jobs
+and to pull from revenue_entries. Will need to initialize the dictionary using the fetch from the jobs table and then
+add in the orders from revenue and eventually update the total_revenue and target_met parameters.
+
+Total revenue will just need to start at 0.0 and have the appropriate values added to it each iteration. One way to go
+about that would be to iterate order by order and the values that need math will just need to be updated accordingly.
+
+Found a bug.
+
+Definitely did not keep up with this log... oops!
+
+------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------- SUMMARY -----------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+
+Had to change my values for the connection string to be able to access the database through python.
+
+From there, I copied all the previous code from get_job_statistics in order to work on code without breaking the proper
+method; however, I never did go back and put the code back into get_job_statistics, so all the implementation is under
+it (with comments to make reading the code easier).
+
+There are two variables initialized as soon as test_logic(job_id) is run:
+
+    res - the result or final output
+    orders - the orders dictionary that is nested in res
+
+Res is the final output dictionary that contains information on the jobs themselves, and then a dictionary within that
+contains the appropriate information on the orders. Orders is the dictionary with res that displays information from the
+rows within the revenue_entries table. Here, we have where eCPM is calculated and revenue is updated row by row.
+
+The problem is tackled in two parts:
+
+    First, pull data from jobs
+    Secondly, pull date from revenue_entries
+
+The FIRST PART is pretty straightforward. Using the job_id taken from the argument parameter of the method, we use our
+cursors to fetch the data where the job_id in the job table matches the argument parameter. If we want to
+get_job_statistics for the job with the id of 1, then the method will only pull information that corresponds with the
+job with the matching id. We then fill our res dictionary with the information we're seeking like job_name and
+expected revenue. No calculations need to be done in this step; however, four of the six fields will be updated by the
+end of second part.
+
+The SECOND PART is a bit trickier and involves more implementation. First, we set our cursor to find revenue entries
+with the match job_id. Then we iterate row by row. We initialize a few empty variables like date_log. From here, we move
+into our while loop that will run until there are no more rows to parse data from.
+
+First thing, we do within our loop is to calculate the eCPM for the row. If the impressions is 0, then the eCPM is 0
+because the assumption is without impressions an eCPM cannot be calculated (this may be wrong however). Otherwise, eCPM
+can be calculated like normal:
+
+    eCPM = (AD REVENUE / NO. OF IMPRESSIONS) * 1000
+
+Next, we add the revenue made from the row to the total revenue of the job. This is one of the parameters from the res
+dictionary in part one that is now being updated. Next, we tackle the orders dictionary. If an order # is not already in
+the dictionary, then we need to add the key and the value to the dictionary. With each new order, values like total
+revenue, for that order, and average_ecpm are initialized. We also initialize a few more temporary variables like n and
+total_raw_ecpm (we will come back to this variable in a second).
+
+If the order # is in the orders dictionary, then we update the necessary values in the dictionary. It is here that most
+of the math in the algorithm is calculated.
+
+    Average eCPM is calculated by taking the total_raw_ecpm for the order # and adding the eCPM of the row to it. Then
+    we divide it by n and update n.
+
+    Total impressions is updated so that we can then calculate the total_eCPM for the order #. This is done by taking
+    the total revenue for the order # and dividing it by the total impressions then multiply by 1000.
+
+These calculations are done row by row, updating both necessary values in res and updating the orders dictionary. Before
+moving on to the next row, there is a helper function called month check that takes the date in each row, logs it to a
+dictionary, and then updates month service count. While this works for these test cases, the implementation is limited
+and will give the wrong result if the order were to start in December and end in March for example. While we can look
+and see that the month count would be 4, the method would not return 4. Just something to keep in mind.
+
+Lastly, we compare total revenue of the job to the expected revenue and determine whether or not the target was hit.
+I ran into a bug where for the last test case, the total revenue would not stick to two decimal places, so I had to
+force it to. We close the cursor and the connection and then return the res to the get_job_statistics function.
+
+I fixed two errors in the test cases that involved the wrong job_names. Lastly, no matter what I did I couldn't get
+the average or total eCPM to calculate to the values in the third test case, so I've commented them to the side, and
+replaced them with the values that my method calculates. I may not have a strong understanding of how to calculate eCPM
+properly.
+
+All three test cases run successfully!
